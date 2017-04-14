@@ -29,6 +29,8 @@ fs = require 'fs'
 net = require 'net'
 events = require 'events'
 winston = require 'winston'
+chokidar = require 'chokidar'
+Tail = require('tail').Tail
 
 ###
 LogStream is a group of local files paths.  It watches each file for
@@ -36,42 +38,7 @@ changes, extracts new log messages, and emits 'new_log' events.
 
 ###
 class LogStream extends events.EventEmitter
-  constructor: (@name, @paths, @_log) ->
-
-  watch: ->
-    @_log.info "Starting log stream: '#{@name}'"
-    @_watchFile path for path in @paths
-    @
-
-  _watchFile: (path) ->
-      if not fs.existsSync path
-        @_log.error "File doesn't exist: '#{path}'"
-        setTimeout (=> @_watchFile path), 1000
-        return
-      @_log.info "Watching file: '#{path}'"
-      currSize = fs.statSync(path).size
-      watcher = fs.watch path, (event, filename) =>
-        if event is 'rename'
-          # File has been rotated, start new watcher
-          watcher.close()
-          @_watchFile path
-        if event is 'change'
-          # Capture file offset information for change event
-          fs.stat path, (err, stat) =>
-            @_readNewLogs path, stat.size, currSize
-            currSize = stat.size
-
-  _readNewLogs: (path, curr, prev) ->
-    # Use file offset information to stream new log lines from file
-    return if curr < prev
-    rstream = fs.createReadStream path,
-      encoding: 'utf8'
-      start: prev
-      end: curr
-    # Emit 'new_log' event for every captured log line
-    rstream.on 'data', (data) =>
-      lines = data.split "\n"
-      @emit 'new_log', line for line in lines when line
+  constructor: (@name, @path, @_log) ->
 
 ###
 LogHarvester creates LogStreams and opens a persistent TCP connection to the server.
@@ -85,13 +52,28 @@ class LogHarvester
     {@nodeName, @server} = config
     @delim = config.delimiter ? '\r\n'
     @_log = config.logging ? winston
-    @logStreams = (new LogStream s, paths, @_log for s, paths of config.logStreams)
+    @logStreams = (new LogStream s, path, @_log for s, path of config.logStreams)
 
-  run: ->
+  LogHarvester::run = ->
+    _this = this
     @_connect()
-    @logStreams.forEach (stream) =>
-      stream.watch().on 'new_log', (msg) =>
-        @_sendLog stream, msg if @_connected
+    @logStreams.forEach (stream) ->
+      console.log stream
+      watcher = chokidar.watch(stream.path,
+        ignored: /(^|[\/\\])\../
+        ignoreInitial: true
+        persistent: true)
+      watcher.on 'add', (file) ->
+        console.log file + ' was added'
+        tail = new Tail(file)
+        tail.on 'line', (data) ->
+          console.log data
+          if _this._connected
+            return _this._sendLog(stream, data)
+          return
+        return
+      return
+    return
 
   _connect: ->
     # Create TCP socket
@@ -103,17 +85,10 @@ class LogHarvester
     @_log.info "Connecting to server..."
     @socket.connect @server.port, @server.host, =>
       @_connected = true
-      @_announce()
 
   _sendLog: (stream, msg) ->
     @_log.debug "Sending log: (#{stream.name}) #{msg}"
-    @_send '+log', stream.name, @nodeName, 'info', msg 
-
-  _announce: ->
-    snames = (l.name for l in @logStreams).join ","
-    @_log.info "Announcing: #{@nodeName} (#{snames})"
-    @_send '+node', @nodeName, snames
-    @_send '+bind', 'node', @nodeName
+    @_send '+log', stream.name, @nodeName, 'info', msg
 
   _send: (mtype, args...) ->
     @socket.write "#{mtype}|#{args.join '|'}#{@delim}"
