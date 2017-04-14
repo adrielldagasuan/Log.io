@@ -16,6 +16,8 @@ exports.config = {
 }
 ```
 
+Chokidar has the option of exluding files/folders that will not be watched. Currently, this is set in the harverster.js file but in the future this option will be retrieved from the harvester.conf file.
+
 Next steps:
 - Read chokidar options from harvester.conf file
 - Update dependencies since some functionalities are already deprecated
