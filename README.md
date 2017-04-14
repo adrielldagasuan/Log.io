@@ -1,3 +1,13 @@
+What changed in this version?
+
+Used chokidar(https://github.com/paulmillr/chokidar) for watching files. And instead of watching files, the harvester.conf file will be configured to watch folders.
+
+Next steps:
+- Read chokidar options from harvester.conf file
+- Update dependencies since some functionalities are already deprecated
+- Make changes to the UI
+
+
 Log.io - Real-time log monitoring in your browser
 =================================================
 
@@ -69,7 +79,7 @@ Remove a node
 
 - [jdrake](http://github.com/jdrake)
 
-## License 
+## License
 
 Copyright 2013 Narrative Science &lt;contrib@narrativescience.com&gt;
 
