@@ -1,6 +1,20 @@
 What changed in this version?
 
-Used chokidar(https://github.com/paulmillr/chokidar) for watching files. And instead of watching files, the harvester.conf file will be configured to watch folders.
+Used ([chokidar](https://github.com/paulmillr/chokidar)) for watching files. And instead of watching files, the harvester.conf file will be configured to watch folders.
+
+```
+exports.config = {
+  nodeName: "application_server",
+  logStreams: {
+    Folder1: "/home/Folder1",
+    Foldedr2" "/var/Folder2"
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 28777
+  }
+}
+```
 
 Next steps:
 - Read chokidar options from harvester.conf file
