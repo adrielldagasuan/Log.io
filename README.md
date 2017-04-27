@@ -7,7 +7,7 @@ exports.config = {
   nodeName: "application_server",
   logStreams: {
     Folder1: "/home/Folder1",
-    Foldedr2" "/var/Folder2"
+    Folder2" "/var/Folder2"
   },
   server: {
     host: '0.0.0.0',
